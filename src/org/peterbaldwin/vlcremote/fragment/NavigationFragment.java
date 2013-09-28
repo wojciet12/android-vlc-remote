@@ -91,7 +91,7 @@ public class NavigationFragment extends Fragment implements View.OnTouchListener
     @SuppressWarnings("unchecked")
     private <T> T getSystemService(String name) {
         Context context = getActivity();
-        return (T) context.getSystemService(Context.VIBRATOR_SERVICE);
+        return (T) context.getSystemService(name);
     }
 
     private void vibrate() {

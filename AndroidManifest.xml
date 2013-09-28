@@ -6,7 +6,7 @@
 
     <uses-sdk
         android:minSdkVersion="4"
-        android:targetSdkVersion="15" />
+        android:targetSdkVersion="18" />
 
     <supports-screens
         android:anyDensity="true"
@@ -324,6 +324,7 @@
 
         <service
             android:name="org.peterbaldwin.vlcremote.service.StatusService"
+            android:exported="false"
             android:label="@string/service_label" >
             <intent-filter>
                 <action android:name="org.peterbaldwin.vlcremote.intent.action.STATUS" />

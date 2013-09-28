@@ -61,6 +61,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("deprecation")
 public final class PickServerActivity extends PreferenceActivity implements PortSweeper.Callback,
         DialogInterface.OnClickListener, OnPreferenceChangeListener {
 

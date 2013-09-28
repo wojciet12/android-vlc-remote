@@ -56,7 +56,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
-import android.widget.SlidingDrawer;
 import android.widget.TabHost;
 import android.widget.ViewFlipper;
 
@@ -121,7 +120,8 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
 
     private String mInput;
 
-    private SlidingDrawer mDrawer;
+    @SuppressWarnings("deprecation")
+    private android.widget.SlidingDrawer mDrawer;
 
     private ViewFlipper mFlipper;
 
@@ -162,13 +162,7 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
             onTabChanged(null);
         }
 
-        mDrawer = (SlidingDrawer) findViewById(R.id.drawer);
-        if (mDrawer != null) {
-            assert Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB;
-            BrowseDrawerListener listener = new BrowseDrawerListener(this, mDrawer, mBrowse);
-            mDrawer.setOnDrawerOpenListener(listener);
-            mDrawer.setOnDrawerCloseListener(listener);
-        }
+        setupDrawer();
 
         mFlipper = (ViewFlipper) findViewById(R.id.flipper);
 
@@ -180,6 +174,17 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
 
         if (savedInstanceState == null) {
             onNewIntent(getIntent());
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void setupDrawer() {
+        mDrawer = (android.widget.SlidingDrawer) findViewById(R.id.drawer);
+        if (mDrawer != null) {
+            assert Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB;
+            BrowseDrawerListener listener = new BrowseDrawerListener(this, mDrawer, mBrowse);
+            mDrawer.setOnDrawerOpenListener(listener);
+            mDrawer.setOnDrawerCloseListener(listener);
         }
     }
     
