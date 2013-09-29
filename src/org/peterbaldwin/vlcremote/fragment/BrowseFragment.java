@@ -285,5 +285,11 @@ public class BrowseFragment extends ListFragment implements
         mAdapter.setDirectory(null);
     }
 
+    public void reload() {
+        if (mMediaServer != null) {
+            getLoaderManager().restartLoader(Data.DIRECTORY, Bundle.EMPTY, this);
+        }
+    }
+
     // TODO: Automatically reload directory when connection is restored
 }

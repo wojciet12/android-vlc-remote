@@ -17,6 +17,10 @@
 
 package org.peterbaldwin.vlcremote.app;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.ParseException;
+import org.apache.http.protocol.HTTP;
+import org.apache.http.util.EntityUtils;
 import org.peterbaldwin.client.android.vlcremote.R;
 import org.peterbaldwin.vlcremote.preference.ProgressCategory;
 import org.peterbaldwin.vlcremote.receiver.PhoneStateChangedReceiver;
@@ -56,15 +60,14 @@ import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.EditText;
 import android.widget.ListAdapter;
 
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.List;
 
 @SuppressWarnings("deprecation")
 public final class PickServerActivity extends PreferenceActivity implements PortSweeper.Callback,
         DialogInterface.OnClickListener, OnPreferenceChangeListener {
-
 
     private static final String TAG = "PickServer";
 
@@ -82,8 +85,6 @@ public final class PickServerActivity extends PreferenceActivity implements Port
     private static final String KEY_SERVERS = "servers";
     private static final String KEY_ADD_SERVER = "add_server";
     private static final String KEY_PAUSE_FOR_CALL = "pause_for_call";
-
-    public static final String STATE_HOSTS = "hosts";
 
     public static final int DEFAULT_WORKERS = 16;
 
@@ -110,8 +111,6 @@ public final class PickServerActivity extends PreferenceActivity implements Port
     private AlertDialog mDialogAddServer;
     private EditText mEditHostname;
     private EditText mEditPort;
-    private EditText mEditUser;
-    private EditText mEditPassword;
 
     private String mFile;
     private int mPort;
@@ -198,47 +197,44 @@ public final class PickServerActivity extends PreferenceActivity implements Port
         return nonConfigurationInstance;
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        int n = mProgressCategory.getPreferenceCount();
-        ArrayList<String> hosts = new ArrayList<String>(n * 2);
-        for (int i = 0; i < n; i++) {
-            Preference preference = mProgressCategory.getPreference(i);
-            String hostname = preference.getTitle().toString();
-            String responseCode = preference.getKey();
-            if (!mRemembered.contains(hostname)) {
-                hosts.add(hostname);
-                hosts.add(responseCode);
-            }
-        }
-        outState.putStringArrayList(STATE_HOSTS, hosts);
-    }
 
-    private Preference createServerPreference(String server, int responseCode) {
+    private Preference createServerPreference(String server) {
+        // Don't show port number in title if it's the default
+        String title = server.endsWith(":8080") ?
+                server.substring(0, server.lastIndexOf(':')) :
+                server;
         Preference preference = new Preference(this);
-        preference.setKey(Integer.toString(responseCode));
-        preference.setTitle(server);
+        preference.setKey(server);
+        preference.setTitle(title);
         preference.setPersistent(false);
-        switch (responseCode) {
-            case HttpURLConnection.HTTP_FORBIDDEN:
-                preference.setSummary(getText(R.string.summary_forbidden));
-                break;
-        }
         return preference;
     }
 
-    @Override
-    protected void onRestoreInstanceState(Bundle state) {
-        super.onRestoreInstanceState(state);
-        List<String> hosts = state.getStringArrayList(STATE_HOSTS);
-        for (int i = 0; i < hosts.size(); i += 2) {
-            String hostname = hosts.get(i);
-            String key = hosts.get(i + 1);
-            int responseCode = (key != null) ? Integer.parseInt(key) : HttpURLConnection.HTTP_OK;
-            Preference preference = createServerPreference(hostname, responseCode);
-            mProgressCategory.addPreference(preference);
+    private Preference createServerPreference(HttpResponse response) {
+        String server = response.getFirstHeader(HTTP.TARGET_HOST).getValue();
+        Preference preference = createServerPreference(server);
+        switch (response.getStatusLine().getStatusCode()) {
+            case HttpURLConnection.HTTP_UNAUTHORIZED:
+                preference.setSummary(getText(R.string.summary_password_protected));
+                break;
+            case HttpURLConnection.HTTP_FORBIDDEN:
+                preference.setSummary(getText(R.string.summary_forbidden));
+                preference.setEnabled(false);
+                break;
+            case HttpURLConnection.HTTP_OK:
+                try {
+                    if (EntityUtils.toString(response.getEntity()).contains("--http-password")) {
+                        preference.setSummary(getText(R.string.summary_password_not_set));
+                        preference.setEnabled(false);
+                    }
+                } catch (ParseException e) {
+                    Log.e(TAG, "Failed to parse response", e);
+                } catch (IOException e) {
+                    Log.e(TAG, "Failed to parse response", e);
+                }
+                break;
         }
+        return preference;
     }
 
     @Override
@@ -296,14 +292,15 @@ public final class PickServerActivity extends PreferenceActivity implements Port
     }
 
     /** {@inheritDoc} */
-    public void onHostFound(String hostname, int responseCode) {
-        String server = hostname + ":" + mPort;
-
+    public void onHostFound(HttpResponse response) {
+        String server = response.getFirstHeader(HTTP.TARGET_HOST).getValue();
+        int responseCode = response.getStatusLine().getStatusCode();
         switch (responseCode) {
             case HttpURLConnection.HTTP_OK:
             case HttpURLConnection.HTTP_FORBIDDEN:
+            case HttpURLConnection.HTTP_UNAUTHORIZED:
                 if (!mRemembered.contains(server)) {
-                    Preference preference = createServerPreference(server, responseCode);
+                    Preference preference = createServerPreference(response);
                     mProgressCategory.addPreference(preference);
                 }
                 break;
@@ -323,8 +320,6 @@ public final class PickServerActivity extends PreferenceActivity implements Port
                 View view = inflater.inflate(R.layout.add_server, null);
                 mEditHostname = (EditText) view.findViewById(R.id.edit_hostname);
                 mEditPort = (EditText) view.findViewById(R.id.edit_port);
-                mEditUser = (EditText) view.findViewById(R.id.edit_user);
-                mEditPassword = (EditText) view.findViewById(R.id.edit_password);
                 builder.setView(view);
                 builder.setPositiveButton(R.string.ok, this);
                 builder.setNegativeButton(R.string.cancel, this);
@@ -342,16 +337,8 @@ public final class PickServerActivity extends PreferenceActivity implements Port
                 case DialogInterface.BUTTON_POSITIVE:
                     String hostname = getHostname();
                     int port = getPort();
-                    String user = getUser();
-                    String password = getPassword();
-
-                    StringBuilder server = new StringBuilder();
-                    if (!TextUtils.isEmpty(user)) {
-                        server.append(user).append(':').append(password).append('@');
-                    }
-                    server.append(hostname).append(':').append(port);
-
-                    pick(server.toString());
+                    String server = hostname + ":" + port;
+                    pick(server);
                     break;
                 case DialogInterface.BUTTON_NEGATIVE:
                     dialog.dismiss();
@@ -405,7 +392,7 @@ public final class PickServerActivity extends PreferenceActivity implements Port
         } else if (preference == mPreferencePauseForCall) {
             return super.onPreferenceTreeClick(preferenceScreen, preference);
         } else {
-            String server = preference.getTitle().toString();
+            String server = preference.getKey();
             pick(server);
             return true;
         }
@@ -467,7 +454,7 @@ public final class PickServerActivity extends PreferenceActivity implements Port
         if (progress == 0) {
             mProgressCategory.removeAll();
             for (String server : mRemembered) {
-                Preference preference = createServerPreference(server, HttpURLConnection.HTTP_OK);
+                Preference preference = createServerPreference(server);
                 preference.setSummary(R.string.summary_remembered);
                 mProgressCategory.addPreference(preference);
             }
@@ -477,14 +464,6 @@ public final class PickServerActivity extends PreferenceActivity implements Port
 
     private String getHostname() {
         return mEditHostname.getText().toString();
-    }
-
-    private String getUser() {
-        return mEditUser.getText().toString();
-    }
-
-    private String getPassword() {
-        return mEditPassword.getText().toString();
     }
 
     private int getPort() {

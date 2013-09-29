@@ -17,6 +17,7 @@
 
 package org.peterbaldwin.vlcremote.app;
 
+import org.apache.http.client.HttpResponseException;
 import org.peterbaldwin.client.android.vlcremote.R;
 import org.peterbaldwin.vlcremote.fragment.ArtFragment;
 import org.peterbaldwin.vlcremote.fragment.BrowseFragment;
@@ -34,11 +35,15 @@ import org.peterbaldwin.vlcremote.intent.Intents;
 import org.peterbaldwin.vlcremote.model.Preferences;
 import org.peterbaldwin.vlcremote.model.Status;
 import org.peterbaldwin.vlcremote.net.MediaServer;
+import org.peterbaldwin.vlcremote.net.PasswordManager;
 import org.peterbaldwin.vlcremote.widget.VolumePanel;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.SearchManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
@@ -50,19 +55,25 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.text.InputType;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TabHost;
 import android.widget.ViewFlipper;
 
+import java.io.Serializable;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 
 public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabChangeListener,
-        View.OnClickListener, HotkeyListener {
+        View.OnClickListener, HotkeyListener, DialogInterface.OnClickListener {
 
     private static final String TAG = "PlaybackActivity";
 
@@ -84,6 +95,8 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
     private static final String TAB_NAVIGATION = "navigation";
 
     private static final int MAX_VOLUME = 1024;
+
+    private static final int DIALOG_PASSWORD = 0;
 
     private MediaServer mMediaServer;
 
@@ -124,6 +137,10 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
     private android.widget.SlidingDrawer mDrawer;
 
     private ViewFlipper mFlipper;
+
+    private AlertDialog mPasswordDialog;
+
+    private EditText mPasswordField;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -223,6 +240,31 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
         }
     }
 
+    @Override
+    protected Dialog onCreateDialog(int id) {
+        switch (id) {
+            case DIALOG_PASSWORD:
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle(R.string.enter_password_title);
+                builder.setMessage(R.string.enter_password_message);
+
+                // This is the only way to get the alert dialog theme on Donut:
+                Context themedContext = new AlertDialog.Builder(this).create().getContext();
+                mPasswordField = new EditText(themedContext);
+                mPasswordField.setId(android.R.id.edit);
+                mPasswordField.setInputType(InputType.TYPE_CLASS_TEXT
+                        | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                mPasswordField.setHint(getText(R.string.enter_password_hint));
+                builder.setView(mPasswordField);
+                builder.setPositiveButton(R.string.ok, this);
+                builder.setNegativeButton(R.string.cancel, this);
+                mPasswordDialog = builder.create();
+                return mPasswordDialog;
+            default:
+                return super.onCreateDialog(id);
+        }
+    }
+
     /** {@inheritDoc} */
     public void onClick(View v) {
         switch (v.getId()) {
@@ -232,6 +274,29 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
                 break;
         }
     }
+
+    /** {@inheritDoc} */
+    public void onClick(DialogInterface dialog, int which) {
+        if (dialog == mPasswordDialog) {
+            switch (which) {
+                case DialogInterface.BUTTON1:
+                    if (mMediaServer != null) {
+                        String server = mMediaServer.getAuthority();
+                        String password = mPasswordField.getText().toString();
+                        PasswordManager passwordManager = PasswordManager.get(this);
+                        passwordManager.setPassword(server, password);
+                        mPasswordField.setText("");
+                    }
+                    mBrowse.reload();
+                    mPlaylist.reload();
+                    break;
+                case DialogInterface.BUTTON2:
+                    finish();
+                    break;
+            }
+        }
+    }
+
     /** {@inheritDoc} */
     public void onHotkey(String keycode) {
         if ("toggle-fullscreen".equals(keycode)) {
@@ -246,6 +311,11 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
         boolean on = (mFlipper.getDisplayedChild() != 0);
         int icon = on ? R.drawable.ic_navigation_on : R.drawable.ic_navigation_off;
         button.setImageResource(icon);
+    }
+
+    private void enterPassword() {
+        removeDialog(DIALOG_PASSWORD); // Destroy existing dialog
+        showDialog(DIALOG_PASSWORD); // Show new dialog
     }
 
     @Override
@@ -410,6 +480,7 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
         mStatusReceiver = new StatusReceiver();
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intents.ACTION_STATUS);
+        filter.addAction(Intents.ACTION_ERROR);
         registerReceiver(mStatusReceiver, filter);
         if (mMediaServer == null) {
             pickServer();
@@ -565,6 +636,20 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
             if (Intents.ACTION_STATUS.equals(action)) {
                 Status status = (Status) intent.getSerializableExtra(Intents.EXTRA_STATUS);
                 onVolumeChanged(status.getVolume());
+            } else if (Intents.ACTION_ERROR.equals(action)) {
+                Throwable error = (Throwable) intent.getSerializableExtra(Intents.EXTRA_THROWABLE);
+                try {
+                    throw error;
+                } catch (HttpResponseException e) {
+                    switch (e.getStatusCode()) {
+                        case HttpURLConnection.HTTP_UNAUTHORIZED:
+                            if (mPasswordDialog == null || !mPasswordDialog.isShowing()) {
+                                enterPassword();
+                            }
+                            break;
+                    }
+                } catch (Throwable t) {
+                }
             }
         }
     }

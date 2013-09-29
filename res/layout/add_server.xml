@@ -25,22 +25,6 @@
             android:numeric="integer"
             android:singleLine="true"
             tools:ignore="Deprecated" />
-
-        <EditText
-            android:id="@+id/edit_user"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/label_user"
-            android:singleLine="true"
-            android:visibility="gone" />
-
-        <EditText
-            android:id="@+id/edit_password"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/label_password"
-            android:singleLine="true"
-            android:visibility="gone" />
     </LinearLayout>
 
 </ScrollView>
