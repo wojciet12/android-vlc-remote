@@ -1,6 +1,6 @@
 /*-
- *  Copyright (C) 2009 Peter Baldwin   
- *  
+ *  Copyright (C) 2009 Peter Baldwin
+ *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
@@ -65,14 +65,14 @@ import java.util.List;
 public final class PickServerActivity extends PreferenceActivity implements PortSweeper.Callback,
         DialogInterface.OnClickListener, OnPreferenceChangeListener {
 
-    
+
     private static final String TAG = "PickServer";
 
     private static final String PACKAGE_NAME = R.class.getPackage().getName();
 
     private static final ComponentName PHONE_STATE_RECEIVER = new ComponentName(PACKAGE_NAME,
             PhoneStateChangedReceiver.class.getName());
-    
+
     public static final String EXTRA_PORT = "org.peterbaldwin.portsweep.intent.extra.PORT";
     public static final String EXTRA_FILE = "org.peterbaldwin.portsweep.intent.extra.FILE";
     public static final String EXTRA_WORKERS = "org.peterbaldwin.portsweep.intent.extra.WORKERS";
@@ -106,7 +106,7 @@ public final class PickServerActivity extends PreferenceActivity implements Port
     private PortSweeper mPortSweeper;
 
     private BroadcastReceiver mReceiver;
-    
+
     private AlertDialog mDialogAddServer;
     private EditText mEditHostname;
     private EditText mEditPort;
@@ -123,7 +123,7 @@ public final class PickServerActivity extends PreferenceActivity implements Port
     private CheckBoxPreference mPreferencePauseForCall;
     private ProgressCategory mProgressCategory;
     private Preference mPreferenceAddServer;
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -135,7 +135,7 @@ public final class PickServerActivity extends PreferenceActivity implements Port
         mPreferencePauseForCall = (CheckBoxPreference) preferenceScreen.findPreference(KEY_PAUSE_FOR_CALL);
         mProgressCategory = (ProgressCategory) preferenceScreen.findPreference(KEY_SERVERS);
         mPreferenceAddServer = preferenceScreen.findPreference(KEY_ADD_SERVER);
-        
+
         mPreferencePauseForCall.setOnPreferenceChangeListener(this);
         mPreferencePauseForCall.setChecked(getPauseForCall());
 
@@ -410,7 +410,7 @@ public final class PickServerActivity extends PreferenceActivity implements Port
             return true;
         }
     }
-    
+
     /** {@inheritDoc} */
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (preference == mPreferencePauseForCall) {

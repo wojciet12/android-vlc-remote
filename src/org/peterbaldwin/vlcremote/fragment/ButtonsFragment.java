@@ -1,6 +1,6 @@
 /*-
- *  Copyright (C) 2011 Peter Baldwin   
- *  
+ *  Copyright (C) 2011 Peter Baldwin
+ *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
@@ -144,7 +144,7 @@ public final class ButtonsFragment extends Fragment implements View.OnClickListe
                 break;
         }
     }
-    
+
     private int getShuffleResId() {
         if (mRandom) {
             return R.drawable.ic_mp_shuffle_on_btn;

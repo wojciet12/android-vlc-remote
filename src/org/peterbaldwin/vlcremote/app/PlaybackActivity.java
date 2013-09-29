@@ -1,6 +1,6 @@
 /*-
- *  Copyright (C) 2011 Peter Baldwin   
- *  
+ *  Copyright (C) 2011 Peter Baldwin
+ *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
@@ -65,7 +65,7 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
         View.OnClickListener, HotkeyListener {
 
     private static final String TAG = "PlaybackActivity";
-    
+
     private static final int REQUEST_PICK_SERVER = 1;
 
     private static final Uri URI_TROUBLESHOOTING = Uri
@@ -187,7 +187,7 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
             mDrawer.setOnDrawerCloseListener(listener);
         }
     }
-    
+
     @Override
     public void onAttachFragment(Fragment fragment) {
         super.onAttachFragment(fragment);
@@ -397,7 +397,7 @@ public class PlaybackActivity extends FragmentActivity implements TabHost.OnTabC
         if (mMediaServer == null) {
             Log.w(TAG, "No server selected");
             return;
-        }   
+        }
         mInput = input;
         if (mInput != null) {
             mMediaServer.status().command.input.play(mInput);
