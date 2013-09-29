@@ -20,7 +20,7 @@ import android.widget.SeekBar;
 
 public class VolumeFragment extends Fragment implements SeekBar.OnSeekBarChangeListener {
 
-    private static final int MAX_VOLUME = 1024;
+    private static final int MAX_VOLUME = 256 * 5 / 4; // 125% of 256
 
     private ImageView mIcon;
     private SeekBar mSeekBar;
