@@ -38,6 +38,7 @@ public class VolumeFragment extends Fragment implements SeekBar.OnSeekBarChangeL
         mIcon = (ImageView) view.findViewById(android.R.id.icon);
         mSeekBar = (SeekBar) view.findViewById(android.R.id.progress);
         mSeekBar.setOnSeekBarChangeListener(this);
+        mSeekBar.setMax(MAX_VOLUME);
         return view;
     }
 
