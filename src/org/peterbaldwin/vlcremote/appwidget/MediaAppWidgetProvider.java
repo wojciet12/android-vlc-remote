@@ -109,7 +109,7 @@ public class MediaAppWidgetProvider extends AppWidgetProvider {
     private void scheduleUpdate(Context context, long delay) {
         Object service = context.getSystemService(Context.ALARM_SERVICE);
         AlarmManager alarmManager = (AlarmManager) service;
-        int type = AlarmManager.ELAPSED_REALTIME_WAKEUP;
+        int type = AlarmManager.ELAPSED_REALTIME;
         long triggerAtTime = SystemClock.elapsedRealtime() + delay;
         PendingIntent operation = createManualAppWidgetUpdateIntent(context);
         alarmManager.set(type, triggerAtTime, operation);
