@@ -27,13 +27,13 @@ import org.apache.http.message.BasicStatusLine;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
-import java.io.FileNotFoundException;
+import android.util.Log;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
-import java.net.SocketTimeoutException;
 import java.net.URL;
 
 final class Worker extends Thread {
@@ -56,6 +56,8 @@ final class Worker extends Thread {
          */
         void onUnreachable(byte[] ipAddress, IOException e);
     }
+
+    private static final String TAG = "Sweep";
 
     private final int mPort;
     private final String mPath;
@@ -104,25 +106,29 @@ final class Worker extends Thread {
                     String responseMessage = connection.getResponseMessage();
                     InputStream inputStream = (responseCode == HttpURLConnection.HTTP_OK)
                             ? connection.getInputStream() : connection.getErrorStream();
-                    try {
-                        int length = connection.getContentLength();
-                        InputStreamEntity entity = new InputStreamEntity(inputStream, length);
-                        entity.setContentType(connection.getContentType());
+                    if (inputStream != null) {
+                        try {
+                            int length = connection.getContentLength();
+                            InputStreamEntity entity = new InputStreamEntity(inputStream, length);
+                            entity.setContentType(connection.getContentType());
 
-                        // Copy the entire response body into memory
-                        // before the HTTP connection is closed:
-                        String body = EntityUtils.toString(entity);
+                            // Copy the entire response body into memory
+                            // before the HTTP connection is closed:
+                            String body = EntityUtils.toString(entity);
 
-                        ProtocolVersion version = new ProtocolVersion("HTTP", 1, 1);
-                        String hostname = address.getHostName();
-                        StatusLine statusLine =
-                                new BasicStatusLine(version, responseCode, responseMessage);
-                        HttpResponse response = new BasicHttpResponse(statusLine);
-                        response.setHeader(HTTP.TARGET_HOST, hostname + ":" + mPort);
-                        response.setEntity(new StringEntity(body));
-                        mCallback.onReachable(ipAddress, response);
-                    } finally {
-                        inputStream.close();
+                            ProtocolVersion version = new ProtocolVersion("HTTP", 1, 1);
+                            String hostname = address.getHostName();
+                            StatusLine statusLine =
+                                    new BasicStatusLine(version, responseCode, responseMessage);
+                            HttpResponse response = new BasicHttpResponse(statusLine);
+                            response.setHeader(HTTP.TARGET_HOST, hostname + ":" + mPort);
+                            response.setEntity(new StringEntity(body));
+                            mCallback.onReachable(ipAddress, response);
+                        } finally {
+                            inputStream.close();
+                        }
+                    } else {
+                        Log.w(TAG, "InputStream is null");
                     }
                 } finally {
                     connection.disconnect();
